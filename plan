@@ -1,0 +1,56 @@
+Goal
+1. Make sure to send exactly one `pong()` call for every `Ping` emitted.
+
+Plan
+1. Monitoring Bot -> emit
+    - write a bot, running a for loop
+    - call `filterLog`, filtering (address, topic of the event)
+    - for each event, store it into a queue* (impl TBD)
+        (block_hash, tx_hash,retry_count=0)
+
+2. Sending Bot -> consumming
+    - consume from the queue
+        - if retry_count > MAX_RETRY_COUNT -> mark as dead
+    - for each Ping, save the sending record locally into a SQL DB
+        (indexed block_hash, indexed unique tx_hash, indexed sending_tx_hash, status=sent, indexed private_key_id, indexed nonce)
+        status: sent, confirmed (it's found on blockchain), expired (it's over 1hour), dead
+    - send 1 transaction over to the blockchain with the next private_key calling the privatekkey_abstact_layer
+
+3. Reconciliation Bot -> emit
+    - Scan the SQL DB
+    - For each tx, get transaction from blockchain
+        if confirmed, mark as confirmed
+        if not found, keep looping until 1hr, and mark it as expired
+    - After the state is finalized,
+        if confirmed, do nothing
+        if expired, failed,
+            - get all following transactions for same private key
+            - remove them from the queue
+            - push everything back to the queue w/ retry_count++
+
+4. Re-Org Prevention Bot -> emittingh
+    - Run a for loop
+    - Scan the blockchain N blocks behind the head
+    - Get "confirmed" transactions from the blockchain, check if it's still there
+        - if not, remove from DB, and push back into the queue
+
+
+Plan
+
+1. Store everything in memory (mock repositories)
+2. Define the models
+  - message in the queue
+  - sent_tx in the database
+3. define the repositories
+  - message queue
+  - TxRepository (database)
+3-1. impl basic repositories for testing
+4. implement 4 bots
+
+
+
+Send the github link
+1. e2e execution flow (of the 4 bots)
+2. privatekey management part, other
+3. try to implement as many modules as possible
+  - at least implement the interface
